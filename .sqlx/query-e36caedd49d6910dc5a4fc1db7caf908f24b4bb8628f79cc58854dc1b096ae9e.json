@@ -1,0 +1,44 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT device_id, device_name, mode as \"mode: models::DeviceMode\"\n        FROM devices\n        WHERE device_id = $1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "device_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "device_name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "mode: models::DeviceMode",
+        "type_info": {
+          "Custom": {
+            "name": "device_mode",
+            "kind": {
+              "Enum": [
+                "signin",
+                "supervisor"
+              ]
+            }
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "e36caedd49d6910dc5a4fc1db7caf908f24b4bb8628f79cc58854dc1b096ae9e"
+}

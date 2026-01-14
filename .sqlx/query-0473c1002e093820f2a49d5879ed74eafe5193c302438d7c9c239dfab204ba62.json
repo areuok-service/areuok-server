@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO supervision_requests (request_id, supervisor_id, target_id, status)\n        VALUES ($1, $2, $3, 'pending')\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "0473c1002e093820f2a49d5879ed74eafe5193c302438d7c9c239dfab204ba62"
+}

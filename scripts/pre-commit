@@ -1,0 +1,37 @@
+#!/bin/bash
+# Pre-commit hook for Rust project
+# This script runs basic checks before committing
+
+set -e
+
+echo "🔍 Running pre-commit checks..."
+
+# Format check
+echo "📝 Checking code format..."
+if ! cargo fmt --all -- --check; then
+    echo "❌ Code formatting issues found!"
+    echo "   Run 'cargo fmt --all' to fix."
+    exit 1
+fi
+
+# Clippy
+echo "🔎 Running Clippy lints..."
+if ! cargo clippy --workspace --all-targets -- -D warnings; then
+    echo "❌ Clippy found issues!"
+    echo "   Please fix them before committing."
+    exit 1
+fi
+
+# Tests (if DATABASE_URL is set)
+if [ -n "$DATABASE_URL" ]; then
+    echo "🧪 Running tests..."
+    if ! cargo test --workspace; then
+        echo "❌ Tests failed!"
+        echo "   Please fix failing tests before committing."
+        exit 1
+    fi
+else
+    echo "⏭️  Skipping tests (DATABASE_URL not set)"
+fi
+
+echo "✅ All checks passed!"

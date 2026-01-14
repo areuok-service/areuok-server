@@ -1,0 +1,52 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT sr.relation_id, sr.supervisor_id, sr.target_id, sr.created_at,\n               d1.device_name as supervisor_name,\n               d2.device_name as target_name\n        FROM supervision_relations sr\n        LEFT JOIN devices d1 ON sr.supervisor_id = d1.device_id\n        LEFT JOIN devices d2 ON sr.target_id = d2.device_id\n        WHERE sr.supervisor_id = $1 OR sr.target_id = $1\n        ORDER BY sr.created_at DESC\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "relation_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "supervisor_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "target_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 3,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 4,
+        "name": "supervisor_name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 5,
+        "name": "target_name",
+        "type_info": "Varchar"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "05f81e737c94a16ff938a9118e9037ca801af5c1bef40593d70c830390515e42"
+}

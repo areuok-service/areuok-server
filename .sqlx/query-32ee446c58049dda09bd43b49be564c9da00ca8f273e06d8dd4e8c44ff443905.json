@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        DELETE FROM supervision_relations\n        WHERE relation_id = $1\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "32ee446c58049dda09bd43b49be564c9da00ca8f273e06d8dd4e8c44ff443905"
+}

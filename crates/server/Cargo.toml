@@ -1,0 +1,17 @@
+[package]
+name = "server"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+api = { path = "../api" }
+db = { path = "../db" }
+models = { path = "../models" }
+axum.workspace = true
+tokio.workspace = true
+tower.workspace = true
+tower-http.workspace = true
+dotenvy.workspace = true
+anyhow.workspace = true
+log = "0.4"
+env_logger = "0.11"

@@ -1,0 +1,81 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO devices (device_id, device_name, imei, mode)\n        VALUES ($1, $2, $3, $4)\n        RETURNING device_id, device_name, imei, mode as \"mode: models::DeviceMode\", created_at, last_seen_at, last_name_updated_at\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "device_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "device_name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "imei",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "mode: models::DeviceMode",
+        "type_info": {
+          "Custom": {
+            "name": "device_mode",
+            "kind": {
+              "Enum": [
+                "signin",
+                "supervisor"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 5,
+        "name": "last_seen_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 6,
+        "name": "last_name_updated_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Varchar",
+        "Varchar",
+        {
+          "Custom": {
+            "name": "device_mode",
+            "kind": {
+              "Enum": [
+                "signin",
+                "supervisor"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "40f9346833bff443c61db89678db658c61c3fbd1a500a9a2286f0bbfa170e1ca"
+}

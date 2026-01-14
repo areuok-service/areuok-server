@@ -1,0 +1,21 @@
+# Clippy 配置文件 - 启用更严格的代码审查
+
+# 复杂度阈值
+cognitive-complexity-threshold = 30
+type-complexity-threshold = 250
+
+# 函数参数数量阈值
+too-many-arguments-threshold = 7
+
+# 文档要求
+missing-docs-in-crate-items = true
+
+# 类型大小阈值（字节）
+too-large-for-stack = 200
+trivial-copy-size-limit = 256
+
+# Vec boxing 阈值
+vec-box-size-threshold = 16
+
+# 栈大小阈值
+stack-size-threshold = 512000

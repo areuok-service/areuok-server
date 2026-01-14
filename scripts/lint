@@ -1,0 +1,105 @@
+#!/bin/bash
+# Comprehensive lint script for the project
+# Runs all checks: formatting, clippy, tests, and more
+
+set -e
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+echo -e "${BLUE}========================================${NC}"
+echo -e "${BLUE}   Running Comprehensive Lint Checks   ${NC}"
+echo -e "${BLUE}========================================${NC}"
+echo ""
+
+# Track failures
+FAILURES=0
+
+# Function to run a check
+run_check() {
+    local name="$1"
+    local command="$2"
+
+    echo -e "${BLUE}Checking: ${name}...${NC}"
+    if eval "$command"; then
+        echo -e "${GREEN}✓ ${name} passed${NC}"
+        echo ""
+        return 0
+    else
+        echo -e "${RED}✗ ${name} failed${NC}"
+        echo ""
+        ((FAILURES++))
+        return 1
+    fi
+}
+
+# Format check
+run_check "Code Formatting (rustfmt)" \
+    "cargo fmt --all -- --check"
+
+# Clippy with strict warnings
+run_check "Clippy Lints" \
+    "cargo clippy --workspace --all-targets -- -D warnings"
+
+# Check if it compiles
+run_check "Compilation Check" \
+    "cargo check --workspace"
+
+# Documentation check (if cargo doc is available)
+if command -v cargo &> /dev/null; then
+    run_check "Documentation Check" \
+        "cargo doc --workspace --no-deps"
+fi
+
+# Check for trailing whitespace
+echo -e "${BLUE}Checking for trailing whitespace...${NC}"
+if grep -r '[[:space:]]$' crates/ --include="*.rs" | grep -v 'target/' | grep -v '.sqlx/'; then
+    echo -e "${YELLOW}⚠ Found trailing whitespace${NC}"
+    echo ""
+    ((FAILURES++))
+else
+    echo -e "${GREEN}✓ No trailing whitespace found${NC}"
+    echo ""
+fi
+
+# Check for tabs (should use spaces)
+echo -e "${BLUE}Checking for tabs...${NC}"
+if grep -P '\t' crates/ --include="*.rs" --exclude-dir=target | grep -v '.sqlx/'; then
+    echo -e "${YELLOW}⚠ Found tabs (use spaces instead)${NC}"
+    echo ""
+    ((FAILURES++))
+else
+    echo -e "${GREEN}✓ No tabs found${NC}"
+    echo ""
+fi
+
+# Check line length (soft limit at 100 chars)
+echo -e "${BLUE}Checking for long lines (>100 chars)...${NC}"
+LONG_LINES=$(find crates/ -name "*.rs" -not -path "*/target/*" -not -path "*/.sqlx/*" -exec awk 'length > 100 {print FILENAME ":" NR ":" length " chars"}' {} \;)
+if [ -n "$LONG_LINES" ]; then
+    echo -e "${YELLOW}⚠ Found lines longer than 100 characters:${NC}"
+    echo "$LONG_LINES" | head -20
+    if [ $(echo "$LONG_LINES" | wc -l) -gt 20 ]; then
+        echo "... and more"
+    fi
+    echo ""
+else
+    echo -e "${GREEN}✓ No excessively long lines found${NC}"
+    echo ""
+fi
+
+# Summary
+echo -e "${BLUE}========================================${NC}"
+if [ $FAILURES -eq 0 ]; then
+    echo -e "${GREEN}✅ All checks passed!${NC}"
+    echo -e "${BLUE}========================================${NC}"
+    exit 0
+else
+    echo -e "${RED}❌ $FAILURES check(s) failed${NC}"
+    echo -e "${BLUE}========================================${NC}"
+    exit 1
+fi

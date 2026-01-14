@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE supervision_requests\n        SET status = 'accepted'\n        WHERE request_id = $1\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "b2073cc71fc80816ef0aa37110217decedc1dc8fa95fa39e027ea5c6e835d35a"
+}

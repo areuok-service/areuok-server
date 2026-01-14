@@ -1,0 +1,83 @@
+# Rust
+/target/
+**/*.rs.bk
+*.pdb
+*.rlib
+
+# SQLx offline data should be committed
+# .sqlx/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+
+# OS
+.DS_Store
+Thumbs.db
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+
+# Environment
+.env
+.env.local
+.env.*.local
+.env.production
+
+# Docker
+docker-compose.override.yml
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Python (test directory)
+test/.venv/
+test/__pycache__/
+test/*.pyc
+test/.pytest_cache/
+test/.coverage
+test/htmlcov/
+test/.tox/
+test/dist/
+test/*.egg-info/
+
+# Coverage
+*.cover
+.hypothesis/
+.pytest_cache/
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.backup
+
+# Build artifacts
+*.o
+*.so
+*.dylib
+*.dll
+*.exe
+
+# Documentation builds
+/docs/_build/
+/site/
+
+# Misc
+*.orig

@@ -1,0 +1,36 @@
+# Rustfmt 配置文件 - 统一代字风格
+# 仅使用稳定选项，兼容 stable Rust
+
+# 最大行宽
+max_width = 100
+
+# 每个 tab 的空格数
+tab_spaces = 4
+
+# 硬标签（使用大括号而不是缩进）
+hard_tabs = false
+
+# 使用字段初始化简写
+use_field_init_shorthand = true
+
+# 使用 try shorthand
+use_try_shorthand = true
+
+# 强制显式 ABI
+force_explicit_abi = true
+
+# 移除嵌套的括号
+remove_nested_parens = true
+
+# 合并派生
+merge_derives = true
+
+# 重排序导入
+reorder_imports = true
+reorder_modules = true
+
+# 行尾风格
+newline_style = "Unix"
+
+# match 分支尾随逗号
+match_block_trailing_comma = true

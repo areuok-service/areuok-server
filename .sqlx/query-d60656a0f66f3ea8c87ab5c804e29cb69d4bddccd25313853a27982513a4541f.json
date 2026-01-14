@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE devices\n        SET last_seen_at = NOW()\n        WHERE device_id = $1\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "d60656a0f66f3ea8c87ab5c804e29cb69d4bddccd25313853a27982513a4541f"
+}

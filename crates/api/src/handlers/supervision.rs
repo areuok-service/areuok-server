@@ -1,5 +1,5 @@
 use crate::error::AppError;
-use crate::DbPool;
+use crate::AppState;
 use axum::{
     extract::{Path, State},
     Json,
@@ -8,7 +8,7 @@ use models::{SupervisionCreateRequest, SupervisionRelation};
 use uuid::Uuid;
 
 pub async fn create_supervision_request(
-    State(pool): State<DbPool>,
+    State(state): State<AppState>,
     Json(req): Json<SupervisionCreateRequest>,
 ) -> Result<Json<models::SupervisionRequest>, AppError> {
     let request_id = Uuid::new_v4();
@@ -22,7 +22,7 @@ pub async fn create_supervision_request(
         req.supervisor_id,
         req.target_id
     )
-    .execute(&pool)
+    .execute(&state.pool)
     .await?;
 
     let supervision_request = sqlx::query_as!(
@@ -35,14 +35,14 @@ pub async fn create_supervision_request(
         "#,
         request_id
     )
-    .fetch_one(&pool)
+    .fetch_one(&state.pool)
     .await?;
 
     Ok(Json(supervision_request))
 }
 
 pub async fn pending_requests(
-    State(pool): State<DbPool>,
+    State(state): State<AppState>,
     Path(device_id): Path<Uuid>,
 ) -> Result<Json<Vec<models::SupervisionRequest>>, AppError> {
     let requests = sqlx::query_as!(
@@ -56,16 +56,34 @@ pub async fn pending_requests(
         "#,
         device_id
     )
-    .fetch_all(&pool)
+    .fetch_all(&state.pool)
     .await?;
 
     Ok(Json(requests))
 }
 
 pub async fn accept_supervision(
-    State(pool): State<DbPool>,
+    State(state): State<AppState>,
     Json(req): Json<SupervisionCreateRequest>,
 ) -> Result<Json<()>, AppError> {
+    let existing_relation = sqlx::query!(
+        r#"
+        SELECT relation_id
+        FROM supervision_relations
+        WHERE supervisor_id = $1 AND target_id = $2
+        "#,
+        req.supervisor_id,
+        req.target_id
+    )
+    .fetch_optional(&state.pool)
+    .await?;
+
+    if existing_relation.is_some() {
+        return Err(AppError::BadRequest(
+            "Supervision relation already exists".to_string(),
+        ));
+    }
+
     let supervision_request = sqlx::query!(
         r#"
         SELECT request_id, supervisor_id, target_id
@@ -77,7 +95,7 @@ pub async fn accept_supervision(
         req.supervisor_id,
         req.target_id
     )
-    .fetch_optional(&pool)
+    .fetch_optional(&state.pool)
     .await?
     .ok_or(AppError::NotFound(
         "Pending supervision request not found".to_string(),
@@ -91,7 +109,7 @@ pub async fn accept_supervision(
         "#,
         supervision_request.request_id
     )
-    .execute(&pool)
+    .execute(&state.pool)
     .await?;
 
     let relation_id = Uuid::new_v4();
@@ -105,17 +123,17 @@ pub async fn accept_supervision(
         supervision_request.supervisor_id,
         supervision_request.target_id
     )
-    .execute(&pool)
+    .execute(&state.pool)
     .await?;
 
     Ok(Json(()))
 }
 
 pub async fn reject_supervision(
-    State(pool): State<DbPool>,
+    State(state): State<AppState>,
     Json(req): Json<SupervisionCreateRequest>,
 ) -> Result<Json<()>, AppError> {
-    sqlx::query!(
+    let result = sqlx::query!(
         r#"
         UPDATE supervision_requests
         SET status = 'rejected'
@@ -124,14 +142,20 @@ pub async fn reject_supervision(
         req.supervisor_id,
         req.target_id
     )
-    .execute(&pool)
+    .execute(&state.pool)
     .await?;
+
+    if result.rows_affected() == 0 {
+        return Err(AppError::NotFound(
+            "Pending supervision request not found".to_string(),
+        ));
+    }
 
     Ok(Json(()))
 }
 
 pub async fn list_supervision_relations(
-    State(pool): State<DbPool>,
+    State(state): State<AppState>,
     Path(device_id): Path<Uuid>,
 ) -> Result<Json<Vec<SupervisionRelation>>, AppError> {
     let relations = sqlx::query_as!(
@@ -148,14 +172,14 @@ pub async fn list_supervision_relations(
         "#,
         device_id
     )
-    .fetch_all(&pool)
+    .fetch_all(&state.pool)
     .await?;
 
     Ok(Json(relations))
 }
 
 pub async fn remove_supervision(
-    State(pool): State<DbPool>,
+    State(state): State<AppState>,
     Path(relation_id): Path<Uuid>,
 ) -> Result<Json<()>, AppError> {
     sqlx::query!(
@@ -165,7 +189,7 @@ pub async fn remove_supervision(
         "#,
         relation_id
     )
-    .execute(&pool)
+    .execute(&state.pool)
     .await?;
 
     Ok(Json(()))

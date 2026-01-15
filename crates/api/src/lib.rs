@@ -6,18 +6,34 @@ use axum::{
 use chrono::Utc;
 use models::{Device, DeviceRegisterRequest, DeviceStatusResponse, DeviceUpdateNameRequest};
 use sqlx::PgPool;
+use std::sync::Arc;
 use uuid::Uuid;
 
 pub type DbPool = PgPool;
 
 mod error;
 mod handlers;
+mod sse;
 
 pub use error::AppError;
+pub use sse::{sse_handler, SseManager};
 
 pub type ApiPool = DbPool;
 
-pub fn create_router(pool: DbPool) -> Router {
+#[derive(Clone)]
+pub struct AppState {
+    pub pool: DbPool,
+    pub sse_manager: Arc<SseManager>,
+}
+
+impl AppState {
+    pub fn new(pool: DbPool, sse_manager: Arc<SseManager>) -> Self {
+        Self { pool, sse_manager }
+    }
+}
+
+pub fn create_router(pool: DbPool, sse_manager: Arc<SseManager>) -> Router {
+    let state = AppState::new(pool, sse_manager);
     Router::new()
         .route("/devices/register", post(register_device))
         .route("/devices/:id", get(get_device))
@@ -55,11 +71,12 @@ pub fn create_router(pool: DbPool) -> Router {
             "/supervision/:relation_id",
             axum::routing::delete(handlers::supervision::remove_supervision),
         )
-        .with_state(pool)
+        .route("/sse", get(sse_handler))
+        .with_state(state)
 }
 
 async fn register_device(
-    State(pool): State<DbPool>,
+    State(state): State<AppState>,
     Json(req): Json<DeviceRegisterRequest>,
 ) -> Result<Json<Device>, AppError> {
     let existing_name = sqlx::query!(
@@ -70,7 +87,7 @@ async fn register_device(
         "#,
         req.device_name
     )
-    .fetch_optional(&pool)
+    .fetch_optional(&state.pool)
     .await?;
 
     if existing_name.is_some() {
@@ -88,7 +105,7 @@ async fn register_device(
             "#,
             imei
         )
-        .fetch_optional(&pool)
+        .fetch_optional(&state.pool)
         .await?;
 
         if let Some(existing) = existing_device {
@@ -101,7 +118,7 @@ async fn register_device(
                 "#,
                 existing.device_id
             )
-            .fetch_one(&pool)
+            .fetch_one(&state.pool)
             .await?;
 
             return Ok(Json(device));
@@ -121,7 +138,7 @@ async fn register_device(
         req.imei,
         req.mode as models::DeviceMode
     )
-    .fetch_one(&pool)
+    .fetch_one(&state.pool)
     .await?;
 
     let device = sqlx::query_as!(
@@ -133,14 +150,14 @@ async fn register_device(
         "#,
         device_id
     )
-    .fetch_one(&pool)
+    .fetch_one(&state.pool)
     .await?;
 
     Ok(Json(device))
 }
 
 async fn get_device(
-    State(pool): State<DbPool>,
+    State(state): State<AppState>,
     axum::extract::Path(id): axum::extract::Path<Uuid>,
 ) -> Result<Json<Device>, AppError> {
     let device = sqlx::query_as!(
@@ -152,7 +169,7 @@ async fn get_device(
         "#,
         id
     )
-    .fetch_optional(&pool)
+    .fetch_optional(&state.pool)
     .await?
     .ok_or(AppError::NotFound("Device not found".to_string()))?;
 
@@ -160,7 +177,7 @@ async fn get_device(
 }
 
 async fn update_device_name(
-    State(pool): State<DbPool>,
+    State(state): State<AppState>,
     axum::extract::Path(id): axum::extract::Path<Uuid>,
     Json(req): Json<DeviceUpdateNameRequest>,
 ) -> Result<Json<Device>, AppError> {
@@ -172,7 +189,7 @@ async fn update_device_name(
         "#,
         id
     )
-    .fetch_optional(&pool)
+    .fetch_optional(&state.pool)
     .await?
     .ok_or(AppError::NotFound("Device not found".to_string()))?;
 
@@ -185,7 +202,7 @@ async fn update_device_name(
         req.device_name,
         id
     )
-    .fetch_optional(&pool)
+    .fetch_optional(&state.pool)
     .await?;
 
     if existing_name.is_some() {
@@ -216,7 +233,7 @@ async fn update_device_name(
         req.device_name,
         id
     )
-    .fetch_one(&pool)
+    .fetch_one(&state.pool)
     .await?;
 
     let device = sqlx::query_as!(
@@ -228,14 +245,14 @@ async fn update_device_name(
         "#,
         id
     )
-    .fetch_one(&pool)
+    .fetch_one(&state.pool)
     .await?;
 
     Ok(Json(device))
 }
 
 async fn get_device_status(
-    State(pool): State<DbPool>,
+    State(state): State<AppState>,
     axum::extract::Path(id): axum::extract::Path<Uuid>,
 ) -> Result<Json<DeviceStatusResponse>, AppError> {
     let device = sqlx::query!(
@@ -246,7 +263,7 @@ async fn get_device_status(
         "#,
         id
     )
-    .fetch_optional(&pool)
+    .fetch_optional(&state.pool)
     .await?
     .ok_or(AppError::NotFound("Device not found".to_string()))?;
 
@@ -260,7 +277,7 @@ async fn get_device_status(
         "#,
         id
     )
-    .fetch_optional(&pool)
+    .fetch_optional(&state.pool)
     .await?;
 
     let streak = sqlx::query!(
@@ -273,7 +290,7 @@ async fn get_device_status(
         "#,
         id
     )
-    .fetch_optional(&pool)
+    .fetch_optional(&state.pool)
     .await?;
 
     Ok(Json(DeviceStatusResponse {
@@ -286,7 +303,7 @@ async fn get_device_status(
 }
 
 async fn search_devices(
-    State(pool): State<DbPool>,
+    State(state): State<AppState>,
     axum::extract::Query(params): axum::extract::Query<std::collections::HashMap<String, String>>,
 ) -> Result<Json<Vec<Device>>, AppError> {
     let query = params.get("q").map(|v| v.as_str()).unwrap_or("");
@@ -308,7 +325,7 @@ async fn search_devices(
         "#,
         search_pattern
     )
-    .fetch_all(&pool)
+    .fetch_all(&state.pool)
     .await?;
 
     Ok(Json(devices))

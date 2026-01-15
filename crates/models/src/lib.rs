@@ -84,3 +84,14 @@ pub struct DeviceStatusResponse {
     pub last_signin: Option<DateTime<Utc>>,
     pub streak: i32,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "type", content = "data")]
+pub enum SseEvent {
+    #[serde(rename = "signin")]
+    Signin {
+        device_id: Uuid,
+        device_name: String,
+        time: DateTime<Utc>,
+    },
+}

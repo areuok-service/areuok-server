@@ -17,6 +17,7 @@ Usage:
 import uuid
 import pytest
 import requests
+import time
 from typing import Optional
 from dataclasses import dataclass
 
@@ -25,19 +26,27 @@ from dataclasses import dataclass
 BASE_URL = "http://localhost:3000"
 
 
+def unique_name(prefix: str = "device") -> str:
+    return f"{prefix}-{int(time.time() * 1000)}-{uuid.uuid4().hex[:8]}"
+
+
 @dataclass
 class Device:
     """Represents a registered device."""
+
     device_id: str
     device_name: str
     mode: str
+    imei: Optional[str] = None
     created_at: Optional[str] = None
     last_seen_at: Optional[str] = None
+    last_name_updated_at: Optional[str] = None
 
 
 @dataclass
 class SupervisionRequest:
     """Represents a supervision request."""
+
     request_id: str
     supervisor_id: str
     target_id: str
@@ -48,6 +57,7 @@ class SupervisionRequest:
 @dataclass
 class SupervisionRelation:
     """Represents an established supervision relation."""
+
     relation_id: str
     supervisor_id: str
     target_id: str
@@ -64,11 +74,13 @@ class APIClient:
         self.session = requests.Session()
         self.session.headers.update({"Content-Type": "application/json"})
 
-    def register_device(self, device_name: str, mode: str = "signin") -> requests.Response:
+    def register_device(
+        self, device_name: str, mode: str = "signin"
+    ) -> requests.Response:
         """Register a new device."""
         return self.session.post(
             f"{self.base_url}/devices/register",
-            json={"device_name": device_name, "mode": mode}
+            json={"device_name": device_name, "mode": mode},
         )
 
     def get_device(self, device_id: str) -> requests.Response:
@@ -83,29 +95,35 @@ class APIClient:
         """Get device status including signin streak."""
         return self.session.get(f"{self.base_url}/devices/{device_id}/status")
 
-    def create_supervision_request(self, supervisor_id: str, target_id: str) -> requests.Response:
+    def create_supervision_request(
+        self, supervisor_id: str, target_id: str
+    ) -> requests.Response:
         """Create a supervision request from supervisor to target."""
         return self.session.post(
             f"{self.base_url}/supervision/request",
-            json={"supervisor_id": supervisor_id, "target_id": target_id}
+            json={"supervisor_id": supervisor_id, "target_id": target_id},
         )
 
     def get_pending_requests(self, device_id: str) -> requests.Response:
         """Get pending supervision requests for a device."""
         return self.session.get(f"{self.base_url}/supervision/pending/{device_id}")
 
-    def accept_supervision(self, supervisor_id: str, target_id: str) -> requests.Response:
+    def accept_supervision(
+        self, supervisor_id: str, target_id: str
+    ) -> requests.Response:
         """Accept a supervision request."""
         return self.session.post(
             f"{self.base_url}/supervision/accept",
-            json={"supervisor_id": supervisor_id, "target_id": target_id}
+            json={"supervisor_id": supervisor_id, "target_id": target_id},
         )
 
-    def reject_supervision(self, supervisor_id: str, target_id: str) -> requests.Response:
+    def reject_supervision(
+        self, supervisor_id: str, target_id: str
+    ) -> requests.Response:
         """Reject a supervision request."""
         return self.session.post(
             f"{self.base_url}/supervision/reject",
-            json={"supervisor_id": supervisor_id, "target_id": target_id}
+            json={"supervisor_id": supervisor_id, "target_id": target_id},
         )
 
     def list_supervision_relations(self, device_id: str) -> requests.Response:
@@ -130,7 +148,8 @@ def client():
 @pytest.fixture
 def registered_device(client: APIClient):
     """Create and return a registered signin device."""
-    response = client.register_device("Test Device", "signin")
+    name = unique_name("signin")
+    response = client.register_device(name, "signin")
     assert response.status_code == 200
     return Device(**response.json())
 
@@ -138,7 +157,8 @@ def registered_device(client: APIClient):
 @pytest.fixture
 def supervisor_device(client: APIClient):
     """Create and return a registered supervisor device."""
-    response = client.register_device("Supervisor Device", "supervisor")
+    name = unique_name("supervisor")
+    response = client.register_device(name, "supervisor")
     assert response.status_code == 200
     return Device(**response.json())
 
@@ -146,7 +166,8 @@ def supervisor_device(client: APIClient):
 @pytest.fixture
 def target_device(client: APIClient):
     """Create and return a registered target (signin) device."""
-    response = client.register_device("Target Device", "signin")
+    name = unique_name("target")
+    response = client.register_device(name, "signin")
     assert response.status_code == 200
     return Device(**response.json())
 
@@ -156,23 +177,25 @@ class TestDeviceRegistration:
 
     def test_register_device_signin_mode(self, client: APIClient):
         """Test registering a device in signin mode."""
-        response = client.register_device("My Phone", "signin")
+        device_name = unique_name("phone")
+        response = client.register_device(device_name, "signin")
 
         assert response.status_code == 200
         data = response.json()
         assert "device_id" in data
-        assert data["device_name"] == "My Phone"
+        assert data["device_name"] == device_name
         assert data["mode"] == "signin"
         assert "created_at" in data
         assert "last_seen_at" in data
 
     def test_register_device_supervisor_mode(self, client: APIClient):
         """Test registering a device in supervisor mode."""
-        response = client.register_device("Parent Phone", "supervisor")
+        device_name = unique_name("supervisor")
+        response = client.register_device(device_name, "supervisor")
 
         assert response.status_code == 200
         data = response.json()
-        assert data["device_name"] == "Parent Phone"
+        assert data["device_name"] == device_name
         assert data["mode"] == "supervisor"
 
     def test_register_device_empty_name(self, client: APIClient):
@@ -183,8 +206,10 @@ class TestDeviceRegistration:
 
     def test_register_multiple_devices(self, client: APIClient):
         """Test registering multiple devices."""
-        response1 = client.register_device("Device 1", "signin")
-        response2 = client.register_device("Device 2", "supervisor")
+        name1 = unique_name("device1")
+        name2 = unique_name("device2")
+        response1 = client.register_device(name1, "signin")
+        response2 = client.register_device(name2, "supervisor")
 
         assert response1.status_code == 200
         assert response2.status_code == 200
@@ -287,7 +312,9 @@ class TestDeviceSignin:
         assert "date" in data
         assert data["streak"] >= 1
 
-    def test_signin_device_twice_same_day(self, client: APIClient, registered_device: Device):
+    def test_signin_device_twice_same_day(
+        self, client: APIClient, registered_device: Device
+    ):
         """Test signing in a device twice on the same day."""
         response1 = client.signin_device(registered_device.device_id)
         response2 = client.signin_device(registered_device.device_id)
@@ -323,7 +350,9 @@ class TestDeviceStatus:
         assert data["device_name"] == registered_device.device_name
         assert "streak" in data
 
-    def test_get_status_after_signin(self, client: APIClient, registered_device: Device):
+    def test_get_status_after_signin(
+        self, client: APIClient, registered_device: Device
+    ):
         """Test getting status after signing in."""
         # First signin
         client.signin_device(registered_device.device_id)
@@ -434,7 +463,9 @@ class TestAcceptSupervision:
         assert response.status_code == 200
 
         # Verify the relation was created
-        relations_response = client.list_supervision_relations(supervisor_device.device_id)
+        relations_response = client.list_supervision_relations(
+            supervisor_device.device_id
+        )
         assert relations_response.status_code == 200
         relations = relations_response.json()
         assert len(relations) >= 1
@@ -497,9 +528,7 @@ class TestListSupervisionRelations:
         client.create_supervision_request(
             supervisor_device.device_id, target_device.device_id
         )
-        client.accept_supervision(
-            supervisor_device.device_id, target_device.device_id
-        )
+        client.accept_supervision(supervisor_device.device_id, target_device.device_id)
 
         # List relations for supervisor
         response = client.list_supervision_relations(supervisor_device.device_id)
@@ -521,9 +550,7 @@ class TestListSupervisionRelations:
         client.create_supervision_request(
             supervisor_device.device_id, target_device.device_id
         )
-        client.accept_supervision(
-            supervisor_device.device_id, target_device.device_id
-        )
+        client.accept_supervision(supervisor_device.device_id, target_device.device_id)
 
         # List relations for target
         response = client.list_supervision_relations(target_device.device_id)
@@ -544,12 +571,12 @@ class TestRemoveSupervision:
         client.create_supervision_request(
             supervisor_device.device_id, target_device.device_id
         )
-        client.accept_supervision(
-            supervisor_device.device_id, target_device.device_id
-        )
+        client.accept_supervision(supervisor_device.device_id, target_device.device_id)
 
         # Get the relation ID
-        relations_response = client.list_supervision_relations(supervisor_device.device_id)
+        relations_response = client.list_supervision_relations(
+            supervisor_device.device_id
+        )
         relations = relations_response.json()
         relation_id = relations[0]["relation_id"]
 
@@ -559,7 +586,9 @@ class TestRemoveSupervision:
         assert response.status_code == 200
 
         # Verify relation is removed
-        relations_after = client.list_supervision_relations(supervisor_device.device_id).json()
+        relations_after = client.list_supervision_relations(
+            supervisor_device.device_id
+        ).json()
         matching = [r for r in relations_after if r["relation_id"] == relation_id]
         assert len(matching) == 0
 
@@ -576,15 +605,17 @@ class TestIntegrationWorkflow:
     """Integration tests for complete supervision workflow."""
 
     def test_complete_supervision_workflow(self, client: APIClient):
-        """Test the complete supervision workflow from registration to monitoring."""
+        """Test complete supervision workflow from registration to monitoring."""
         # Step 1: Register a supervisor device
-        supervisor_response = client.register_device("Parent Phone", "supervisor")
+        supervisor_name = unique_name("parent")
+        supervisor_response = client.register_device(supervisor_name, "supervisor")
         assert supervisor_response.status_code == 200
         supervisor = supervisor_response.json()
         supervisor_id = supervisor["device_id"]
 
         # Step 2: Register a signin device
-        target_response = client.register_device("Child Phone", "signin")
+        target_name = unique_name("child")
+        target_response = client.register_device(target_name, "signin")
         assert target_response.status_code == 200
         target = target_response.json()
         target_id = target["device_id"]
@@ -632,8 +663,10 @@ class TestIntegrationWorkflow:
     def test_reject_workflow(self, client: APIClient):
         """Test the workflow where a supervision request is rejected."""
         # Register devices
-        supervisor = client.register_device("Supervisor", "supervisor").json()
-        target = client.register_device("Target", "signin").json()
+        supervisor_name = unique_name("supervisor")
+        target_name = unique_name("target")
+        supervisor = client.register_device(supervisor_name, "supervisor").json()
+        target = client.register_device(target_name, "signin").json()
 
         # Create request
         client.create_supervision_request(supervisor["device_id"], target["device_id"])
@@ -646,9 +679,7 @@ class TestIntegrationWorkflow:
 
         # Verify no pending requests remain
         pending = client.get_pending_requests(target["device_id"]).json()
-        matching = [
-            r for r in pending if r["supervisor_id"] == supervisor["device_id"]
-        ]
+        matching = [r for r in pending if r["supervisor_id"] == supervisor["device_id"]]
         assert len(matching) == 0
 
         # Verify no relations were created
@@ -665,7 +696,7 @@ class TestHealthCheck:
     def test_server_is_running(self, client: APIClient):
         """Test that the server is responding."""
         # Try to register a device as a health check
-        response = client.register_device("Health Check", "signin")
+        response = client.register_device(unique_name("health"), "signin")
         assert response.status_code == 200
 
 

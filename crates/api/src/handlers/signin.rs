@@ -1,14 +1,14 @@
 use crate::error::AppError;
-use crate::DbPool;
+use crate::AppState;
 use axum::{
     extract::{Path, State},
     Json,
 };
-use models::SigninRecord;
+use models::{Device, SigninRecord, SseEvent};
 use uuid::Uuid;
 
 pub async fn signin_handler(
-    State(pool): State<DbPool>,
+    State(state): State<AppState>,
     Path(device_id): Path<Uuid>,
 ) -> Result<Json<models::SigninRecord>, AppError> {
     let now = chrono::Utc::now();
@@ -21,7 +21,7 @@ pub async fn signin_handler(
         "#,
         device_id
     )
-    .execute(&pool)
+    .execute(&state.pool)
     .await?;
 
     let existing_today = sqlx::query!(
@@ -32,7 +32,7 @@ pub async fn signin_handler(
         "#,
         device_id
     )
-    .fetch_optional(&pool)
+    .fetch_optional(&state.pool)
     .await?;
 
     if let Some(record) = existing_today {
@@ -55,7 +55,7 @@ pub async fn signin_handler(
         "#,
         device_id
     )
-    .fetch_optional(&pool)
+    .fetch_optional(&state.pool)
     .await?;
 
     let streak = if let Some(record) = last_record {
@@ -77,8 +77,28 @@ pub async fn signin_handler(
         now,
         streak
     )
-    .execute(&pool)
+    .execute(&state.pool)
     .await?;
+
+    let device = sqlx::query_as!(
+        Device,
+        r#"
+        SELECT device_id, device_name, imei, mode as "mode: models::DeviceMode", created_at, last_seen_at, last_name_updated_at
+        FROM devices
+        WHERE device_id = $1
+        "#,
+        device_id
+    )
+    .fetch_one(&state.pool)
+    .await?;
+
+    let event = SseEvent::Signin {
+        device_id,
+        device_name: device.device_name,
+        time: now,
+    };
+
+    let _ = state.sse_manager.broadcast(event).await;
 
     Ok(Json(SigninRecord {
         device_id,

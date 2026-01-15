@@ -11,8 +11,7 @@ COPY Cargo.toml Cargo.lock* ./
 COPY crates ./crates
 COPY .sqlx ./.sqlx
 
-# Build the project with offline sqlx cache
-ENV SQLX_OFFLINE=true
+# Build project
 RUN cargo build --release
 
 # Runtime stage

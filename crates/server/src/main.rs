@@ -1,7 +1,8 @@
-use api::create_router;
+use api::{create_router, SseManager};
 use db::{create_pool, run_migrations};
 use log::{debug, error, info, warn};
 use std::net::SocketAddr;
+use std::sync::Arc;
 use tower_http::cors::CorsLayer;
 use tower_http::trace::TraceLayer;
 
@@ -74,9 +75,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         },
     }
 
-    // Create router
+    let sse_manager = Arc::new(SseManager::new());
+    debug!("✓ SSE manager created");
+
     debug!("Creating application router...");
-    let app = create_router(pool)
+    let app = create_router(pool, sse_manager)
         .layer(TraceLayer::new_for_http())
         .layer(CorsLayer::permissive());
     debug!("✓ Router created with CORS and tracing layers");
